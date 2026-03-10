@@ -1,0 +1,66 @@
+<!--
+
+To run this demo, you need to replace 'YOUR_ACCESS_TOKEN' with an access token from ArcGIS that has the correct privileges.
+
+To get started, sign up for a free ArcGIS Location Platform account or a free trial of ArcGIS Online and create developer credentials.
+
+https://developers.arcgis.com/documentation/security-and-authentication/get-started/
+
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    html,
+    body,
+    #map {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <!-- Load MapLibre GL JS from CDN -->
+  <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css" rel="stylesheet">
+  <!-- Load MapLibre ArcGIS from CDN -->
+  <script src="https://unpkg.com/@esri/maplibre-arcgis@1.1.0/dist/umd/maplibre-arcgis.min.js"></script>
+</head>
+
+<body>
+  <div id="map"></div>
+  <script src="./apikey.js"></script>
+  <script type="module">
+
+    const map = new maplibregl.Map({
+      container: "map", // the id of the div element
+      zoom: 14, // starting zoom
+      center: [-117.805, 34.027], // starting location
+    });
+
+    const apiKey = myApiKey;
+
+    const basemapSession = await maplibreArcGIS.BasemapSession.start({
+      styleFamily: 'arcgis',
+      token: apiKey, // ArcGIS API key
+      duration:30, // Only valid for 30 seconds, for testing
+      autoRefresh: true
+    });
+
+    const arcgisBasemap = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/outdoor',
+      session: basemapSession
+    });
+
+    basemapSession.on('BasemapSessionExpired', () => {
+      console.log("The basemap session is about to expire.");
+    });
+
+    basemapSession.on('BasemapSessionRefreshed', (event) => {
+      console.log(`The basemap session was refreshed. previous token: ${event.previous.token}`);
+    });
+</script>
+</body>
+
+</html>
