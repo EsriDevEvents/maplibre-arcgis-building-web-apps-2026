@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <title>Open source web apps</title>
+  <!-- Calcite Components-->
+  <script type="module" src="https://js.arcgis.com/calcite-components/3.3.3/calcite.esm.js"></script>
+  <!-- Load MapLibre GL JS from CDN -->
+  <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.css" rel="stylesheet">
+  <!-- Load MapLibre ArcGIS from CDN -->
+  <script src="https://unpkg.com/@esri/maplibre-arcgis@1.2.0/dist/umd/maplibre-arcgis.min.js"></script>
+  <!--JS SDK-->
+  <!-- Load the ArcGIS Maps SDK for JavaScript from CDN -->
+  <script type="module" src="https://js.arcgis.com/5.0/"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body,
+    #map {
+      height: 100%;
+      width: 100%;
+      /* font-family: Arial, Helvetica, sans-serif; */
+    }
+
+    /* ── 2D / 2.5D toggle pill ─────────────────────────────────── */
+    #view-toggle-panel {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 40px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.10);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: #323232;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      user-select: none;
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.45;
+      transition: opacity 0.25s, color 0.25s;
+      cursor: pointer;
+    }
+
+    .toggle-label.active {
+      opacity: 1;
+      color: #0070cc;
+    }
+
+    /* ── Year panel ────────────────────────────────────────────── */
+    #year-panel {
+      position: absolute;
+      top: 10px;
+      left: 50px;
+      z-index: 999;
+      width: 300px;
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 10px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.16), 0 1px 4px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: none;
+      /* shown via JS when in 2.5D */
+      overflow: hidden;
+    }
+
+    #year-panel.visible {
+      display: block;
+    }
+
+    /* Collapsible header row */
+    #year-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    #year-panel-header:hover {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    #year-panel.expanded #year-panel-header {
+      border-bottom-color: #e8e8e8;
+    }
+
+    #year-panel-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #year-panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #444;
+    }
+
+    #year-range-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0070cc;
+      background: #e8f3fc;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+
+    /* Chevron icon — rotates when expanded */
+    #year-chevron {
+      width: 16px;
+      height: 16px;
+      color: #888;
+      transition: transform 0.25s ease;
+      flex-shrink: 0;
+    }
+
+    #year-panel.expanded #year-chevron {
+      transform: rotate(180deg);
+    }
+
+    /* Collapsible body */
+    #year-panel-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.28s ease, padding 0.28s ease;
+      padding: 0 16px;
+    }
+
+    #year-panel.expanded #year-panel-body {
+      max-height: 200px;
+      padding: 14px 16px 16px;
+    }
+
+    /* Gradient legend bar */
+    #year-gradient-bar {
+      height: 6px;
+      border-radius: 3px;
+      margin-top: 8px;
+      background: linear-gradient(to right,
+          #4575b4, #74add1, #e0f3f8, #f46d43, #d73027);
+      opacity: 0.85;
+    }
+
+    #year-axis {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #888;
+      margin-top: 3px;
+    }
+
+    #year-hint {
+      font-size: 10px;
+      color: #bbb;
+      margin-top: 8px;
+      text-align: center;
+      font-style: italic;
+    }
+
+    .code-container {
+      /* display: flex ; */
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 1000;
+      width: 350px;
+    }
+
+    #code-dialog {
+      --calcite-dialog-scrim-background-color: #00000050;
+      --calcite-dialog-min-size-y: 400px;
+      --calcite-dialog-min-size-x: 1100px;
+    }
+
+    arcgis-code-editor {
+      height: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <calcite-shell>
+    <calcite-navigation slot="header" content-behind>
+      <calcite-navigation-logo slot="logo" heading="Display features as PBF"></calcite-navigation-logo>
+    </calcite-navigation>
+    <div id="map"></div>
+    <div class="code-container">
+      <calcite-dialog slot="dialogs" headin g="Code viewer" placement="middle-end" id="code-dialog" scale="m">
+        <arcgis-code-editor style="margin-top: 10px" language="javascript" value='// Display features - MapLibre ArcGIS plugin
+
+const buildingFootprints = await maplibreArcGIS.FeatureLayer.fromPortalItem("5c93a50a8a804d4595eefa2cc5de7a61", {
+  token: accessToken 
+});
+buildingFootprints.addSourcesAndLayersTo(map); // Default styling
+  '></arcgis-code-editor>
+      </calcite-dialog>
+      <calcite-button icon-start="code" label="code" id="code" scale="l"></calcite-button>
+    </div>
+    <!-- Year filter panel — plain HTML, shown only in 2.5D -->
+    <div id="year-panel">
+      <!-- Clickable header toggles collapse -->
+      <div id="year-panel-header">
+        <div id="year-panel-left">
+          <span id="year-panel-title">Construction Year</span>
+          <span id="year-range-badge">1950 – 2010</span>
+        </div>
+        <!-- Chevron SVG -->
+        <svg id="year-chevron" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+
+      <!-- Collapsible body -->
+      <div id="year-panel-body">
+        <calcite-slider id="year-slider" min="1950" max="2010" min-value="1950" max-value="2010" step="1" snap label-handles scale="m" style="width:100%"></calcite-slider>
+        <div id="year-gradient-bar"></div>
+        <div id="year-axis">
+          <span>1950</span><span>1960</span><span>1970</span><span>1980</span><span>1990</span><span>2000</span><span>2010</span>
+        </div>
+        <div id="year-hint">Buildings outside the range are shown in gray</div>
+      </div>
+    </div>
+
+    <!-- 2D / 2.5D Toggle -->
+    <div id="view-toggle-panel">
+      <span class="toggle-label active" id="label-2d">
+        <calcite-icon icon="map" scale="s"></calcite-icon>
+        2D
+      </span>
+      <calcite-switch id="view-switch" scale="m"></calcite-switch>
+      <span class="toggle-label" id="label-25d">
+        <calcite-icon icon="urban-model" scale="s"></calcite-icon>
+        Extrude features
+      </span>
+    </div>
+  </calcite-shell>
+  <script type="module">
+    /* ── CONFIG ──────────────────────────────────────────────── */
+    const buildingKey = "AAPTxy8BH1VEsoebNVZXo8HurFxXBVNiBOedzItTxn9W-OQJF8jgPG8f8Gu25lWxKQY71eejHsKG31bu8KLXQXLdHeMHycgRfc0UpGv4BU8EUv1q-pR9zAEMDE-5HWda554_Z5UG3w4PSuZePinhSTq-I9f3ZTnhci4yr94Wqqv9loVo8RfU7tvghMSC3RT1xv9_xho8EQOW-JFND7jGdg0MIzeswRAf35qxkjGw7Z3gNmfgiuPDE7qg00-IUwobVIMCAT1_4QrmNgi7";
+    // const ITEM_ID = "dfe2d606134546f5a712e689d76540ac";
+    const ITEM_ID = "d7c64761216347028c926b731ccdfebf";
+    const YEAR_MIN = 1950;
+    const YEAR_MAX = 2010;
+    /* ── STATE ───────────────────────────────────────────────── */
+    let buildSrcId = null;
+    let is25D = false;
+    let mapReady = false;
+    let yearLow = YEAR_MIN;
+    let yearHigh = YEAR_MAX;
+    /* ── MAP ─────────────────────────────────────────────────── */
+    const map = new maplibregl.Map({
+      container: "map",
+      center: [-73.986, 40.748],
+      zoom: 15,
+      pitch: 0,
+      bearing: 0,
+      antialias: true,
+      attributionControl: false
+    });
+    map.addControl(new maplibregl.NavigationControl({
+      visualizePitch: true
+    }), "top-left");
+    // Display a map 
+    const accessToken = 'AAPTxy8BH1VEsoebNVZXo8HurEvILHNSDHfdzjqnfOohHjReVWqAHZHccXqVP-2jiZVrsbsqZvvvbMGjgS2WP0XJBzpWD0HR2Szl2kox0IAmpqnOj0C698bpBrSJLYcAUUFwHT9Oo98U_COfSWGvLiacE2OFw615VMoGmGXl0-QDwO7WCJiZqB9gzndwSuGAa-PbCaQMB4ZRw6qKy0SJfADyb7mu8bXzxYEXDnEsbZKN3P0.AT1_5IgW8rC0';
+    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: "arcgis/community",
+      token: accessToken
+    });
+    // Display features from a feature layer 
+    map.on("load", async () => {
+      try {
+        const featureLayer = await maplibreArcGIS.FeatureLayer.fromPortalItem(ITEM_ID, {
+          loadingMode: "ondemand",
+          token: buildingKey
+        });
+        await featureLayer.addSourcesAndLayersTo(map);
+        const style = map.getStyle();
+        buildSrcId = Object.keys(style.sources).find(id => id.includes(ITEM_ID)) ||
+          Object.keys(style.sources).at(-1);
+        captureDefaultLayers();
+        mapReady = true;
+      } catch (err) {
+        console.warn("FeatureLayer load error:", err.message);
+      }
+    });
+    /* ══════════════════════════════════════════════════════════
+       COLOR EXPRESSIONS
+    ══════════════════════════════════════════════════════════ */
+    function yearColorExpr(low, high) {
+      const yr = ["coalesce", ["get", "CNSTRCT_YR"], 0];
+      const fixedRamp = [
+        "interpolate", ["linear"], yr,
+        YEAR_MIN, "#4575b4",
+        YEAR_MIN + (YEAR_MAX - YEAR_MIN) * 0.25, "#74add1",
+        YEAR_MIN + (YEAR_MAX - YEAR_MIN) * 0.50, "#e0f3f8",
+        YEAR_MIN + (YEAR_MAX - YEAR_MIN) * 0.75, "#f46d43",
+        YEAR_MAX, "#d73027",
+      ];
+      const inRange = ["all", [">=", yr, low],
+        ["<=", yr, high],
+        [">", yr, 0]
+      ];
+      return ["case", inRange, fixedRamp, "#c8c8c8"];
+    }
+    /* ══════════════════════════════════════════════════════════
+       LAYER MANAGEMENT
+    ══════════════════════════════════════════════════════════ */
+    const FLAT_IDS = ["buildings-2d-fill"];
+    const EXTRUDE_IDS = ["buildings-ext-base"];
+
+    function removeLayers(ids) {
+      ids.forEach(id => {
+        try {
+          map.removeLayer(id);
+        } catch (_) {}
+      });
+    }
+    let defaultLayerIds = [];
+
+    function captureDefaultLayers() {
+      defaultLayerIds = map.getStyle().layers
+        .filter(l => l.source === buildSrcId)
+        .map(l => l.id);
+    }
+
+    function setDefaultLayersVisible(visible) {
+      const value = visible ? "visible" : "none";
+      defaultLayerIds.forEach(id => {
+        try {
+          map.setLayoutProperty(id, "visibility", value);
+        } catch (_) {}
+      })
+    }
+
+    function addExtrusionLayers() {
+      map.addLayer({
+        id: "buildings-ext-base",
+        type: "fill-extrusion",
+        source: buildSrcId,
+        paint: {
+          "fill-extrusion-color": yearColorExpr(yearLow, yearHigh),
+          "fill-extrusion-height": ["*", ["coalesce", ["get", "HEIGHTROOF"], 10], 0.3048],
+          "fill-extrusion-base": ["*", ["coalesce", ["get", "GROUNDELEV"], 0], 0.3048],
+          "fill-extrusion-opacity": 0.85,
+        },
+      });
+    }
+
+    function updateExtrusionColor() {
+      if (!map.getLayer("buildings-ext-base")) return;
+      map.setPaintProperty("buildings-ext-base", "fill-extrusion-color", yearColorExpr(yearLow, yearHigh));
+    }
+    /* ══════════════════════════════════════════════════════════
+       CAMERA
+    ══════════════════════════════════════════════════════════ */
+    function flyTo25D() {
+      map.easeTo({
+        pitch: 55,
+        bearing: -18,
+        duration: 900
+      });
+    }
+
+    function flyTo2D() {
+      map.easeTo({
+        pitch: 0,
+        bearing: 0,
+        duration: 700
+      });
+    }
+    /* ══════════════════════════════════════════════════════════
+       YEAR PANEL — collapsible header
+    ══════════════════════════════════════════════════════════ */
+    const yearPanel = document.getElementById("year-panel");
+    const yearHeader = document.getElementById("year-panel-header");
+    const yearBadge = document.getElementById("year-range-badge");
+    const yearSlider = document.getElementById("year-slider");
+    yearHeader.addEventListener("click", () => {
+      yearPanel.classList.toggle("expanded");
+    });
+    yearSlider.addEventListener("calciteSliderInput", (e) => {
+      yearLow = Math.round(e.target.minValue ?? e.target.value);
+      yearHigh = Math.round(e.target.maxValue ?? e.target.value);
+      yearBadge.textContent = `${yearLow} – ${yearHigh}`;
+      updateExtrusionColor();
+    });
+    /* ══════════════════════════════════════════════════════════
+       2D / 2.5D TOGGLE
+    ══════════════════════════════════════════════════════════ */
+    const viewSwitch = document.getElementById("view-switch");
+    const label2d = document.getElementById("label-2d");
+    const label25d = document.getElementById("label-25d");
+    viewSwitch.addEventListener("calciteSwitchChange", (e) => {
+      if (!mapReady) {
+        viewSwitch.checked = false;
+        return;
+      }
+      is25D = e.target.checked;
+      label2d.classList.toggle("active", !is25D);
+      label25d.classList.toggle("active", is25D);
+      if (is25D) {
+        // Show panel, collapsed by default
+        yearPanel.classList.add("visible", "expanded");
+        setDefaultLayersVisible(false);
+        addExtrusionLayers();
+        flyTo25D();
+      } else {
+        yearPanel.classList.remove("visible", "expanded");
+        removeLayers(EXTRUDE_IDS);
+        setDefaultLayersVisible(true);
+        flyTo2D();
+      }
+    });
+    label2d.addEventListener("click", () => {
+      if (is25D) viewSwitch.click();
+    });
+    label25d.addEventListener("click", () => {
+      if (!is25D) viewSwitch.click();
+    });
+    // Code button 
+    const codeButton = document.getElementById("code");
+    const dialog = document.getElementById("code-dialog");
+    codeButton.addEventListener("click", () => {
+      dialog.setAttribute("open", true)
+    });
+  </script>
+</body>
+
+</html>

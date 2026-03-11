@@ -46,9 +46,11 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
       token: apiKey,
     });
 
-    const polygonLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
-    const pointLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
-    const lineLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+    const parksItem = 'f2ea5d874dad427294641d2d45097c0e';
+
+    const trailheadsItem = '883cedb8c9fe4524b64d47666ed234a7';
+    
+    const trailsItem = '69e12682738e467eb509d8b54dc73cbd';
 
     map.loadImage("https://static.arcgis.com/images/Symbols/NPS/npsPictograph_0231b.png").then((resp) => {
       map.addImage("hiker-icon", resp.data);
@@ -57,7 +59,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
     map.on('load', async () => {
 
       // Parks data
-      const parks = await maplibreArcGIS.FeatureLayer.fromUrl(polygonLayer);
+      const parks = await maplibreArcGIS.FeatureLayer.fromPortalItem(parksItem);
       parks.addSourcesTo(map);
       map.addLayer({
         ...parks.layer, // The layer property contains a preformatted maplibre layer, including a layer ID and source.
@@ -75,7 +77,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
       })
 
       // Trails data
-      const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineLayer);
+      const trails = await maplibreArcGIS.FeatureLayer.fromPortalItem(trailsItem);
       trails.addSourcesTo(map);
       map.addLayer({
         ...trails.layer,
@@ -98,7 +100,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
 
 
       // Trailheads data
-      const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointLayer);
+      const trailheads = await maplibreArcGIS.FeatureLayer.fromPortalItem(trailheadsItem);
       trailheads.addSourcesTo(map);
       map.addLayer({
         ...trailheads.layer,
