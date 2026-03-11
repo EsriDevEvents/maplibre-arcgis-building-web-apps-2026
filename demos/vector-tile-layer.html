@@ -52,16 +52,16 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
       map.addLayer({
         ...vectorLayer.layer, // The layer property is a preformatted maplibre layer, including a layer ID, source, source-layer, and paint/layout information.
         type: 'fill',
-        // paint: { // Override paint properties provided by service
-        //   "fill-color": ['case',
-        //     ['==', ['get', 'UseType'], 'Residential'], '#E8E191', // Yellow
-        //     ['==', ['get', 'UseType'], 'Commercial'], '#E580A2', // Red
-        //     ['==', ['get', 'UseType'], 'Government'], '#79E284', // Green
-        //     ['==', ['get', 'UseType'], 'Industrial'], '#C080E5', // Purple
-        //     ['==', ['get', 'UseType'], 'Institutional'], '#80BBE5', // Blue
-        //     '#bfbfbf'
-        //   ]
-        // }
+        paint: { // Override paint properties provided by service
+          "fill-color": ['case',
+            ['==', ['get', 'UseType'], 'Residential'], '#E8E191', // Yellow
+            ['==', ['get', 'UseType'], 'Commercial'], '#E580A2', // Red
+            ['==', ['get', 'UseType'], 'Government'], '#79E284', // Green
+            ['==', ['get', 'UseType'], 'Industrial'], '#C080E5', // Purple
+            ['==', ['get', 'UseType'], 'Institutional'], '#80BBE5', // Blue
+            '#bfbfbf'
+          ]
+        }
       });
 
       // map.addLayer({
